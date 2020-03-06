@@ -10,6 +10,7 @@ def open_connection(url):
     client = Client(url)
     client.connect()
     print(str(Timestamp)+" [INFO]\tClient Connected")
+    log_writer('0x05', file_path_log)
     return client
 
 def write_to_csv(data, file_path):
@@ -31,19 +32,24 @@ def OPC_reader(bausteinliste):
     client = open_connection(url)
 
     for element in bausteinliste:
-        #Temp = client.get_node("ns=3;s="+element)
-        Temp = client.get_node("ns=2;i="+element)
+        Temp = client.get_node("ns=3;s="+element)
+        #Temp = client.get_node("ns=2;i="+element)
         Temperature = Temp.get_value()
         Temperature = int(Temperature) / 10
 
         crosstab.append(Temperature)
     
     write_to_csv(crosstab, file_path)
+
     print(str(Timestamp)+" [DEBUG]\tZeile in Datei geschrieben")
+
+    log_writer('0x02', file_path_log)
     # print(crosstab)
 
     client.close_session()
     print(str(Timestamp)+" [INFO]\tVerbindung getrennt")
+
+    log_writer('0x03', file_path_log)
 
 def write_header(liste):
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -52,17 +58,36 @@ def write_header(liste):
         header.append(element)
     write_to_csv(header, file_path)
     print(str(Timestamp)+" [DEBUG]\tHeader in CSV geschrieben")
+    log_writer('0x04', file_path_log)
+
+def log_writer(DebugCode, file_path_log):
+    Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+
+    if DebugCode == '0x01':
+        WriteToLog = str(Timestamp)+" [ERROR]\tFehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel."
+    elif DebugCode == '0x02':
+        WriteToLog = str(Timestamp)+" [INFO]\tZeile in Datei geschrieben"
+    elif DebugCode == '0x03':
+        WriteToLog = str(Timestamp)+" [INFO]\tVerbindung getrennt"
+    elif DebugCode == '0x04':
+        WriteToLog = str(Timestamp)+" [DEBUG]\tHeader in CSV geschrieben"
+    elif DebugCode == '0x05':
+        WriteToLog = str(Timestamp)+" [INFO]\tClient Connected"
+
+    with open(file_path_log, 'a', newline='', encoding="utf-8") as logfile:
+            logfile.write(WriteToLog + '\n')
 
 
-#url = "opc.tcp://192.168.153.31:4870"
-url = "opc.tcp://127.0.0.1:4840"
+url = "opc.tcp://192.168.153.31:4870"
+#url = "opc.tcp://127.0.0.1:4840"
 
-# Baustein_Liste = ["Abgas", "VW_Kessel", "VW_SP_oben", "VW_SP_unten", "VW_Garage", "VW_Brauchwasser", "VW_Vorlauf", "VW_Rücklauf", "VW_Wohnung", "VW_Verteiler", "VW_AT", "VW_Büro"]
+Baustein_Liste = ["Abgas", "VW_Kessel", "VW_SP_oben", "VW_SP_unten", "VW_Garage", "VW_Brauchwasser", "VW_Vorlauf", "VW_Rücklauf", "VW_Wohnung", "VW_Verteiler", "VW_AT", "VW_Büro"]
 
-Baustein_Liste = ["2"]
-file_path = os.path.join(os.path.dirname(__file__), 'export_Abgas.csv')
+# Baustein_Liste = ["2"]
+file_path = os.path.join(os.path.dirname(__file__), 'csv', 'export_Abgas.csv')
+file_path_log = os.path.join(os.path.dirname(__file__), 'log', 'latestlog.log')
 
-
+## Runtime
 while True:
     
     i = 10
@@ -85,6 +110,9 @@ while True:
         OPC_reader(Baustein_Liste)
     except:
         print("Fehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel. Es wird in " + str(i) + " Sekunden erneut versucht.")
+
+        log_writer('0x01', file_path_log)
+
         #time.sleep(5)
         pass
     
@@ -99,4 +127,5 @@ while True:
             print("Warte "+str(i)+" Sekunden...")
         i=i-1
         time.sleep(1)
-    
+
+## Runtime Ende
