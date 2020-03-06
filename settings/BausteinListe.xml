@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bausteinliste>
+    <Node>ns=3;s=</>
+    <Element name="Abgas"/>
+    <Element name="VW_Kessel"/>
+    <Element name="VW_SP_oben"/>
+    <Element name="VW_SP_unten"/>
+    <Element name="VW_Garage"/>
+    <Element name="VW_Brauchwasser"/>
+    <Element name="VW_Vorlauf"/>
+    <Element name="VW_Rücklauf"/>
+    <Element name="VW_Wohnung"/>
+    <Element name="VW_Verteiler"/>
+    <Element name="VW_AT"/>
+    <Element name="VW_Büro"/>
+</bausteinliste>

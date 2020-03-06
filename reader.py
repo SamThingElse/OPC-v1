@@ -4,6 +4,54 @@ from opcua import Client
 import time
 from datetime import datetime
 import csv
+import xml.etree.ElementTree as ET
+
+def settings_reader(xml_file, file_path_log):
+
+    log_writer("0x10", file_path_log)
+    
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    run = True
+
+    url = ""
+    file_path = ""
+    waittime = 0
+
+    for child in root:
+        # print(child.tag, child.text) # Debug
+        if url == '':
+            if child.tag == "url":
+                url = child.text
+                continue
+        elif url != '':
+                pass
+        else:
+            log_writer("0x06", file_path_log)
+            run = False
+
+        if file_path == '':
+            if child.tag == "dateipfadcsv":
+                file_path = child.text
+                continue
+        elif file_path != '':
+            pass
+        else:
+            log_writer("0x07", file_path_log)
+            run = False
+
+        if waittime == 0:    
+            if child.tag == "waittime":
+                waittime = child.text
+                continue
+        elif waittime != 0:
+            pass
+        else:
+            log_writer("0x08", file_path_log)
+            run = False
+
+    return run, url, file_path, waittime
 
 def open_connection(url):
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -64,33 +112,49 @@ def log_writer(DebugCode, file_path_log):
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
     if DebugCode == '0x01':
-        WriteToLog = str(Timestamp)+" [ERROR]\tFehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel."
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel."
     elif DebugCode == '0x02':
-        WriteToLog = str(Timestamp)+" [INFO]\tZeile in Datei geschrieben"
+        WriteToLog = str(Timestamp)+"\t[INFO]\tZeile in Datei geschrieben."
     elif DebugCode == '0x03':
-        WriteToLog = str(Timestamp)+" [INFO]\tVerbindung getrennt"
+        WriteToLog = str(Timestamp)+"\t[INFO]\tVerbindung getrennt."
     elif DebugCode == '0x04':
-        WriteToLog = str(Timestamp)+" [DEBUG]\tHeader in CSV geschrieben"
+        WriteToLog = str(Timestamp)+"\t[INFO]\tHeader in CSV geschrieben."
     elif DebugCode == '0x05':
-        WriteToLog = str(Timestamp)+" [INFO]\tClient Connected"
+        WriteToLog = str(Timestamp)+"\t[INFO]\tClient Connected."
+    elif DebugCode == '0x06':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': URL-Tag nicht gefunden."
+    elif DebugCode == '0x07':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': dateipfadcsv-Tag nicht gefunden."
+    elif DebugCode == '0x08':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': Waittime-Tag nicht gefunden."
+    elif DebugCode == '0x09':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tProgramm wurde aufgrund eines Fehlers abgebrochen."
+    elif DebugCode == '0x10':
+        WriteToLog = str(Timestamp)+"\t[INFO]\t'GeneralSettings.xml' wird gelesen."     
 
     with open(file_path_log, 'a', newline='', encoding="utf-8") as logfile:
             logfile.write(WriteToLog + '\n')
 
 
-url = "opc.tcp://192.168.153.31:4870"
+#url = settings_reader(xml_path_generalsettings)[1]
 #url = "opc.tcp://127.0.0.1:4840"
 
 Baustein_Liste = ["Abgas", "VW_Kessel", "VW_SP_oben", "VW_SP_unten", "VW_Garage", "VW_Brauchwasser", "VW_Vorlauf", "VW_Rücklauf", "VW_Wohnung", "VW_Verteiler", "VW_AT", "VW_Büro"]
 
 # Baustein_Liste = ["2"]
-file_path = os.path.join(os.path.dirname(__file__), 'csv', 'export_Abgas.csv')
+# file_path = os.path.join(os.path.dirname(__file__), 'csv', 'export_Abgas.csv')
 file_path_log = os.path.join(os.path.dirname(__file__), 'log', 'latestlog.log')
+xml_path_generalsettings = os.path.join(os.path.dirname(__file__), 'settings', 'GeneralSettings.xml')
+
+# Initiiere GeneralSettings.xml
+
+run, url, file_path, waittime = settings_reader(xml_path_generalsettings, file_path_log)
+# file_path = os.path.join(os.path.dirname(__file__), 'csv', filename)
 
 ## Runtime
-while True:
+while run == True:
     
-    i = 10
+    wait = waittime
     # clear = lambda: os.system('cls') #on Windows System
     try:
         s = sys.winver
@@ -109,7 +173,7 @@ while True:
     try:
         OPC_reader(Baustein_Liste)
     except:
-        print("Fehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel. Es wird in " + str(i) + " Sekunden erneut versucht.")
+        print("Fehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel. Es wird in " + str(waittime) + " Sekunden erneut versucht.")
 
         log_writer('0x01', file_path_log)
 
@@ -120,12 +184,16 @@ while True:
     print("\n")
     #time.sleep(5)
 
-    for element in range(0,10):
-        if i == 1:
-            print("Warte "+str(i)+" Sekunde...")
+    for element in range(0,int(wait)):
+        if wait == 1:
+            print("Warte "+str(wait)+" Sekunde...")
         else: 
-            print("Warte "+str(i)+" Sekunden...")
-        i=i-1
+            print("Warte "+str(wait)+" Sekunden...")
+        wait = int(wait) - 1
         time.sleep(1)
 
 ## Runtime Ende
+
+if run == False:
+    print("Programm wurde aufgrund eines Fehlers abgebrochen. Siehe Log-Datei für mehr Details.")
+    log_writer("0x09", file_path_log)
