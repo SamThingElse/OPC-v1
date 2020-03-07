@@ -18,6 +18,7 @@ def settings_reader(xml_file, file_path_log):
     url = ""
     file_path = ""
     waittime = 0
+    xml_path_bausteinlist = ""
 
     for child in root:
         # print(child.tag, child.text) # Debug
@@ -32,7 +33,7 @@ def settings_reader(xml_file, file_path_log):
             run = False
 
         if file_path == '':
-            if child.tag == "dateipfadcsv":
+            if child.tag == "DateipfadCSV":
                 file_path = child.text
                 continue
         elif file_path != '':
@@ -42,7 +43,7 @@ def settings_reader(xml_file, file_path_log):
             run = False
 
         if waittime == 0:    
-            if child.tag == "waittime":
+            if child.tag == "WaitTime":
                 waittime = child.text
                 continue
         elif waittime != 0:
@@ -51,7 +52,55 @@ def settings_reader(xml_file, file_path_log):
             log_writer("0x08", file_path_log)
             run = False
 
-    return run, url, file_path, waittime
+        if xml_path_bausteinlist == "":    
+            if child.tag == "DateipfadBausteinliste":
+                xml_path_bausteinlist = child.text
+                continue
+        elif xml_path_bausteinlist != "":
+            pass
+        else:
+            log_writer("0x11", file_path_log)
+            run = False    
+
+    return run, url, file_path, waittime, xml_path_bausteinlist
+
+def bausteinlist_reader(xml_file, file_path_log):
+
+    log_writer("0x12", file_path_log)
+    
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    run = True
+
+    id = 0
+    name = ""
+    node = ""
+
+    baustein_dict = {}
+
+    for child in root:
+        for element in child:
+            if element.tag == "id":
+                id = element.text
+            elif element.tag == "Name":
+                name = element.text
+            elif element.tag == "Node":
+                node = element.text
+            else:
+                pass
+            
+        baustein_dict.update( {name : node} )
+
+    log_writer("0x13", file_path_log, id)
+
+#    for element in baustein_dict:
+#        print(element)
+
+#    for element in baustein_dict:
+#        print(baustein_dict[element])
+
+    return run, baustein_dict
 
 def open_connection(url):
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
@@ -70,18 +119,21 @@ def write_to_csv(data, file_path):
 # Baustein = "VW_AT"
 # Baustein = input("Bitte Bausteinname eingeben: ")
 
-def OPC_reader(bausteinliste):
+def OPC_reader(baustein_dict):
     # now = datetime.now()
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
     crosstab = []
 
     crosstab.append(Timestamp)
-
     client = open_connection(url)
 
-    for element in bausteinliste:
-        Temp = client.get_node("ns=3;s="+element)
-        #Temp = client.get_node("ns=2;i="+element)
+
+    for element in baustein_dict:
+        # print(baustein_dict[element]) # debug
+        # print(element) # debug
+        # print(baustein_dict[element]+element) # debug
+
+        Temp = client.get_node(baustein_dict[element]+element)
         Temperature = Temp.get_value()
         Temperature = int(Temperature) / 10
 
@@ -108,7 +160,7 @@ def write_header(liste):
     print(str(Timestamp)+" [DEBUG]\tHeader in CSV geschrieben")
     log_writer('0x04', file_path_log)
 
-def log_writer(DebugCode, file_path_log):
+def log_writer(DebugCode, file_path_log, n=0):
     Timestamp = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
     if DebugCode == '0x01':
@@ -130,7 +182,13 @@ def log_writer(DebugCode, file_path_log):
     elif DebugCode == '0x09':
         WriteToLog = str(Timestamp)+"\t[ERROR]\tProgramm wurde aufgrund eines Fehlers abgebrochen."
     elif DebugCode == '0x10':
-        WriteToLog = str(Timestamp)+"\t[INFO]\t'GeneralSettings.xml' wird gelesen."     
+        WriteToLog = str(Timestamp)+"\t[INFO]\t'GeneralSettings.xml' wird gelesen."
+    elif DebugCode == '0x11':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': Bausteinpfad-Tag nicht gefunden."
+    elif DebugCode == '0x12':
+        WriteToLog = str(Timestamp)+"\t[INFO]\t'BausteinListe.xml' wird gelesen."
+    elif DebugCode == '0x13':
+        WriteToLog = str(Timestamp)+"\t[INFO]\tEs wurden {0} Bausteine gelesen.".format(n)        
 
     with open(file_path_log, 'a', newline='', encoding="utf-8") as logfile:
             logfile.write(WriteToLog + '\n')
@@ -139,7 +197,7 @@ def log_writer(DebugCode, file_path_log):
 #url = settings_reader(xml_path_generalsettings)[1]
 #url = "opc.tcp://127.0.0.1:4840"
 
-Baustein_Liste = ["Abgas", "VW_Kessel", "VW_SP_oben", "VW_SP_unten", "VW_Garage", "VW_Brauchwasser", "VW_Vorlauf", "VW_Rücklauf", "VW_Wohnung", "VW_Verteiler", "VW_AT", "VW_Büro"]
+# Baustein_Liste = ["Abgas", "VW_Kessel", "VW_SP_oben", "VW_SP_unten", "VW_Garage", "VW_Brauchwasser", "VW_Vorlauf", "VW_Rücklauf", "VW_Wohnung", "VW_Verteiler", "VW_AT", "VW_Büro"]
 
 # Baustein_Liste = ["2"]
 # file_path = os.path.join(os.path.dirname(__file__), 'csv', 'export_Abgas.csv')
@@ -148,8 +206,10 @@ xml_path_generalsettings = os.path.join(os.path.dirname(__file__), 'settings', '
 
 # Initiiere GeneralSettings.xml
 
-run, url, file_path, waittime = settings_reader(xml_path_generalsettings, file_path_log)
+run, url, file_path, waittime, xml_path_bausteinlist = settings_reader(xml_path_generalsettings, file_path_log)
 # file_path = os.path.join(os.path.dirname(__file__), 'csv', filename)
+
+run, baustein_dict = bausteinlist_reader(xml_path_bausteinlist, file_path_log)
 
 ## Runtime
 while run == True:
@@ -168,10 +228,10 @@ while run == True:
         # file exist
         pass
     else:
-        write_header(Baustein_Liste)
+        write_header(baustein_dict)
 
     try:
-        OPC_reader(Baustein_Liste)
+        OPC_reader(baustein_dict)
     except:
         print("Fehler bei der Ausführung. Eventuell besteht keine Verbindung zum Ziel. Es wird in " + str(waittime) + " Sekunden erneut versucht.")
 

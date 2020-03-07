@@ -1,16 +1,63 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<bausteinliste>
-    <Node>ns=3;s=</>
-    <Element name="Abgas"/>
-    <Element name="VW_Kessel"/>
-    <Element name="VW_SP_oben"/>
-    <Element name="VW_SP_unten"/>
-    <Element name="VW_Garage"/>
-    <Element name="VW_Brauchwasser"/>
-    <Element name="VW_Vorlauf"/>
-    <Element name="VW_Rücklauf"/>
-    <Element name="VW_Wohnung"/>
-    <Element name="VW_Verteiler"/>
-    <Element name="VW_AT"/>
-    <Element name="VW_Büro"/>
-</bausteinliste>
+<?xml version="1.0" encoding="UTF-8" ?>
+<Bausteinliste>
+	<Baustein>
+		<id>1</id>
+		<Name>Abgas</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+	<Baustein>
+		<id>2</id>
+		<Name>VW_Kessel</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>3</id>
+		<Name>VW_SP_oben</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>4</id>
+		<Name>VW_SP_unten</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>5</id>
+		<Name>VW_Garage</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>6</id>
+		<Name>VW_Brauchwasser</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>7</id>
+		<Name>VW_Vorlauf</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>8</id>
+		<Name>VW_Rücklauf</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>9</id>
+		<Name>VW_Wohnung</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>10</id>
+		<Name>VW_Verteiler</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>11</id>
+		<Name>VW_AT</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+    	<Baustein>
+		<id>12</id>
+		<Name>VW_Büro</Name>
+        <Node>ns=3;s=</Node>
+	</Baustein>
+</Bausteinliste>
