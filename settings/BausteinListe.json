@@ -1,0 +1,66 @@
+{
+    "Bausteinliste": {
+      "Baustein": [
+        {
+          "id": "1",
+          "Name": "Abgas",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "2",
+          "Name": "VW_Kessel",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "3",
+          "Name": "VW_SP_oben",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "4",
+          "Name": "VW_SP_unten",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "5",
+          "Name": "VW_Garage",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "6",
+          "Name": "VW_Brauchwasser",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "7",
+          "Name": "VW_Vorlauf",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "8",
+          "Name": "VW_Rücklauf",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "9",
+          "Name": "VW_Wohnung",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "10",
+          "Name": "VW_Verteiler",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "11",
+          "Name": "VW_AT",
+          "Node": "ns=3;s="
+        },
+        {
+          "id": "12",
+          "Name": "VW_Büro",
+          "Node": "ns=3;s="
+        }
+      ]
+    }
+  }
