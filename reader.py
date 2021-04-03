@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import csv
 import xml.etree.ElementTree as ET
+import mysql.connector
 
 def settings_reader(xml_file, file_path_log):
 
@@ -19,6 +20,11 @@ def settings_reader(xml_file, file_path_log):
     file_path = ""
     waittime = 0
     xml_path_bausteinlist = ""
+    sqluser = ''
+    sqlpassword = ''
+    sqlhost = ''
+    sqldatabase = ''
+    sqltablename = ''
 
     for child in root:
         # print(child.tag, child.text) # Debug
@@ -60,9 +66,59 @@ def settings_reader(xml_file, file_path_log):
             pass
         else:
             log_writer("0x11", file_path_log)
-            run = False    
+            run = False
 
-    return run, url, file_path, waittime, xml_path_bausteinlist
+        if sqluser == '':
+            if child.tag == "SqlUser":
+                sqluser = child.text
+                continue
+        elif sqluser != '':
+            pass
+        else:
+            log_writer("0x14", file_path_log)
+            run = False
+
+        if sqlpassword == '':
+            if child.tag == "SqlPassword":
+                sqlpassword = child.text
+                continue
+        elif sqlpassword != '':
+            pass
+        else:
+            log_writer("0x15", file_path_log)
+            run = False
+        
+        if sqlhost == '':
+            if child.tag == "SqlHost":
+                sqlhost = child.text
+                continue
+        elif sqlhost != '':
+            pass
+        else:
+            log_writer("0x16", file_path_log)
+            run = False
+
+        if sqldatabase == '':
+            if child.tag == "SqlDatabase":
+                sqldatabase = child.text
+                continue
+        elif sqldatabase != '':
+            pass
+        else:
+            log_writer("0x17", file_path_log)
+            run = False
+
+        if sqltablename == '':
+            if child.tag == "SqlTableName":
+                sqltablename = child.text
+                continue
+        elif sqltablename != '':
+            pass
+        else:
+            log_writer("0x18", file_path_log)
+            run = False
+
+    return run, url, file_path, waittime, xml_path_bausteinlist, sqluser, sqlpassword, sqlhost, sqldatabase, sqltablename
 
 def bausteinlist_reader(xml_file, file_path_log):
 
@@ -139,11 +195,22 @@ def OPC_reader(baustein_dict):
 
         crosstab.append(Temperature)
     
-    write_to_csv(crosstab, file_path)
-
+    if check_csv_puffer(file_path):
+        read_csv_puffer(file_path)
+    
+    if check_sql_connection(sqluser, sqlpassword, sqlhost, sqldatabase) == False:
+        try:
+            write_to_db(sqluser, sqlpassword, sqlhost, sqldatabase, sqltablename, crosstab)
+            log_writer('0x21', file_path_log)
+        except:
+            write_to_csv(crosstab, file_path)
+            log_writer('0x02', file_path_log)
+    else:
+        write_to_csv(crosstab, file_path)
+        log_writer('0x02', file_path_log)
+    
     print(str(Timestamp)+" [DEBUG]\tZeile in Datei geschrieben")
 
-    log_writer('0x02', file_path_log)
     # print(crosstab)
 
     client.close_session()
@@ -188,11 +255,113 @@ def log_writer(DebugCode, file_path_log, n=0):
     elif DebugCode == '0x12':
         WriteToLog = str(Timestamp)+"\t[INFO]\t'BausteinListe.xml' wird gelesen."
     elif DebugCode == '0x13':
-        WriteToLog = str(Timestamp)+"\t[INFO]\tEs wurden {0} Bausteine gelesen.".format(n)        
+        WriteToLog = str(Timestamp)+"\t[INFO]\tEs wurden {0} Bausteine gelesen.".format(n)
+    elif DebugCode == '0x14':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': SqlUser-Tag nicht gefunden."     
+    elif DebugCode == '0x15':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': SqlPassword-Tag nicht gefunden."
+    elif DebugCode == '0x16':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': SqlHost-Tag nicht gefunden." 
+    elif DebugCode == '0x17':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': SqlDatabase-Tag nicht gefunden."
+    elif DebugCode == '0x18':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler in 'GeneralSettings.xml': SqlTableName-Tag nicht gefunden."
+    elif DebugCode == '0x19':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tFehler beim Verbinden mit der MySQL-Datenbank."
+    elif DebugCode == '0x20':
+        WriteToLog = str(Timestamp)+"\t[ERROR]\tBeim Schreiben in die Datenbank ist ein unerwarteter Fehler aufgetreten."
+    elif DebugCode == '0x21':
+        WriteToLog = str(Timestamp)+"\t[INFO]\tZeile in Datenbank geschrieben."
 
     with open(file_path_log, 'a', newline='', encoding="utf-8") as logfile:
             logfile.write(WriteToLog + '\n')
 
+
+def check_sql_connection(sqluser, sqlpassword, sqlhost, sqldatabase):
+    error = False
+    try:
+        testing = mysql.connector.connect(user=sqluser, password=sqlpassword, host=sqlhost, database=sqldatabase)
+        
+        testing.close()
+    except mysql.connector.Error as err:
+        error =  True
+        print(err)
+        log_writer("0x19", file_path_log, err)
+        return error
+    
+    return error
+
+def write_to_db(sqluser, sqlpassword, sqlhost, sqldatabase, sqltablename, crosstab):
+    error = False
+    tstempel = datetime.strptime(crosstab[0], "%d.%m.%Y %H:%M:%S")
+    Zeitstempel = str(tstempel.date()) + " " + str(tstempel.time())
+
+    sql = ("INSERT INTO `{}`.`{}` (`Zeitstempel`, `Abgas`, `VW_Kessel`, `VW_SP_oben`, `VW_SP_unten`, `VW_Garage`, `VW_Brauchwasser`, `VW_Vorlauf`, `VW_Rücklauf`, `VW_Wohnung`, `VW_Verteiler`, `VW_AT`, `VW_Büro`) VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}', '{}');").format(sqldatabase, sqltablename, Zeitstempel, crosstab[1], crosstab[2], crosstab[3], crosstab[4], crosstab[5], crosstab[6], crosstab[7], crosstab[8], crosstab[9], crosstab[10], crosstab[11], crosstab[12])
+
+    try:
+        cnx = mysql.connector.connect(user=sqluser, password=sqlpassword, host=sqlhost, database=sqldatabase)
+
+        cursor = cnx.cursor()
+        cursor.execute(sql)
+        cnx.commit()
+
+        cursor.close()
+        cnx.close()
+    except mysql.connector.Error as err:
+        error = True
+        print(err)
+        log_writer("0x20", file_path_log)
+    return error
+
+def check_csv_puffer(file_path):
+    error = True
+    if os.path.getsize(file_path) == 0:
+        error = False
+        return error
+    else:
+        pass 
+    return error
+
+def read_csv_puffer(file_path):
+    sqlerror = False
+    with open(file_path, "r", encoding="UTF-8") as csv:
+        for row in csv:
+            buffertab = []
+            buffertab.append(row.split(";")[0]),
+            buffertab.append(row.split(";")[1]), 
+            buffertab.append(row.split(";")[2]),
+            buffertab.append(row.split(";")[3]),
+            buffertab.append(row.split(";")[4]),
+            buffertab.append(row.split(";")[5]),
+            buffertab.append(row.split(";")[6]),
+            buffertab.append(row.split(";")[7]),
+            buffertab.append(row.split(";")[8]),
+            buffertab.append(row.split(";")[9]),
+            buffertab.append(row.split(";")[10]),
+            buffertab.append(row.split(";")[11]),
+            buffertab.append(row.split(";")[12].split("\n")[0])
+
+            #print(buffertab)
+            if sqlerror == False:
+                if check_sql_connection(sqluser, sqlpassword, sqlhost, sqldatabase) == False:
+                    try:
+                        write_to_db(sqluser, sqlpassword, sqlhost, sqldatabase, sqltablename, buffertab)
+                        log_writer('0x21', file_path_log)
+                        sqlerror = False
+                        #open(file_path, 'w').close()
+                    except:
+                        sqlerror = True
+                        pass
+                else:
+                    sqlerror = True
+                    pass
+            else:
+
+                break
+    if sqlerror == False:        
+        open(file_path, 'w').close()
+    else:
+        pass
 
 #url = settings_reader(xml_path_generalsettings)[1]
 #url = "opc.tcp://127.0.0.1:4840"
@@ -206,10 +375,13 @@ xml_path_generalsettings = os.path.join(os.path.dirname(__file__), 'settings', '
 
 # Initiiere GeneralSettings.xml
 
-run, url, file_path, waittime, xml_path_bausteinlist = settings_reader(xml_path_generalsettings, file_path_log)
+test_path = '/root/workspace/OPC/csv/test.csv'
+
+run, url, file_path, waittime, xml_path_bausteinlist, sqluser, sqlpassword, sqlhost, sqldatabase, sqltablename = settings_reader(xml_path_generalsettings, file_path_log)
 # file_path = os.path.join(os.path.dirname(__file__), 'csv', filename)
 
 run, baustein_dict = bausteinlist_reader(xml_path_bausteinlist, file_path_log)
+
 
 ## Runtime
 while run == True:
@@ -224,11 +396,12 @@ while run == True:
 
     #clear()
 
-    if os.path.isfile(file_path) == True:
-        # file exist
-        pass
-    else:
-        write_header(baustein_dict)
+### Das Schreiben des CSV-Headers ist Veraltet. Es werden nur noch Werte in die CSV-Datei geschrieben als Puffer für eine fehlende MySQL-Verbindung.
+#    if os.path.isfile(file_path) == True:
+#        # file exist
+#        pass
+#    else:
+#        write_header(baustein_dict)
 
     try:
         OPC_reader(baustein_dict)
